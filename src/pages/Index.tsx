@@ -27,51 +27,47 @@ const Index = () => {
   const [currentResult, setCurrentResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<AnalysisResult[]>([]);
 
-  const analyzeText = () => {
+  const analyzeText = async () => {
     if (!text.trim()) return;
 
     setIsAnalyzing(true);
 
-    setTimeout(() => {
-      const confidence = Math.floor(Math.random() * 100);
-      let verdict: 'verified' | 'unverified' | 'warning' = 'verified';
-      
-      if (confidence < 40) verdict = 'warning';
-      else if (confidence < 70) verdict = 'unverified';
+    try {
+      const response = await fetch('https://functions.poehali.dev/31b9a7ca-9b52-4a47-b0d0-3f23affe5329', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text })
+      });
 
-      const sentimentScore = Math.floor(Math.random() * 200) - 100;
-      let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
-      
-      if (sentimentScore > 30) sentiment = 'positive';
-      else if (sentimentScore < -30) sentiment = 'negative';
+      if (!response.ok) {
+        throw new Error('Ошибка анализа');
+      }
 
-      const aiScore = Math.floor(Math.random() * 100);
+      const aiData = await response.json();
 
       const result: AnalysisResult = {
         id: Date.now().toString(),
         text: text.slice(0, 100) + (text.length > 100 ? '...' : ''),
-        confidence,
-        verdict,
-        sources: [
-          'Reuters',
-          'BBC News',
-          'Associated Press'
-        ],
+        confidence: aiData.confidence,
+        verdict: aiData.verdict,
+        sources: aiData.sources,
         timestamp: new Date(),
-        sentiment,
-        sentimentScore,
-        aiScore,
-        aiInsights: [
-          'Обнаружены эмоционально окрашенные слова',
-          'Структура текста соответствует журналистским стандартам',
-          'Выявлены фактические утверждения, требующие проверки'
-        ]
+        sentiment: aiData.sentiment,
+        sentimentScore: aiData.sentimentScore,
+        aiScore: aiData.aiScore,
+        aiInsights: aiData.aiInsights
       };
 
       setCurrentResult(result);
       setHistory([result, ...history]);
+    } catch (error) {
+      console.error('Ошибка анализа:', error);
+      alert('Не удалось выполнить анализ. Проверьте настройки API.');
+    } finally {
       setIsAnalyzing(false);
-    }, 1500);
+    }
   };
 
   const getVerdictColor = (verdict: string) => {

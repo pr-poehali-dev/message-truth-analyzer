@@ -1,0 +1,35 @@
+{
+  "tests": [
+    {
+      "name": "Test OPTIONS CORS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedHeaders": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS"
+      }
+    },
+    {
+      "name": "Test POST without text",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Test POST with text (mock - will fail without API key)",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "text": "Тестовый текст для анализа"
+      },
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
