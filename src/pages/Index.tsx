@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +26,7 @@ const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentResult, setCurrentResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<AnalysisResult[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
   const analyzeText = async () => {
     if (!text.trim()) return;
@@ -61,7 +62,7 @@ const Index = () => {
       };
 
       setCurrentResult(result);
-      setHistory([result, ...history]);
+      await loadHistory();
     } catch (error) {
       console.error('Ошибка анализа:', error);
       alert('Не удалось выполнить анализ. Проверьте настройки API.');
@@ -69,6 +70,29 @@ const Index = () => {
       setIsAnalyzing(false);
     }
   };
+
+  const loadHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const response = await fetch('https://functions.poehali.dev/150d0727-6e5b-4ecd-9a5e-86cba97b5f93');
+      if (response.ok) {
+        const data = await response.json();
+        const formattedHistory = data.map((item: any) => ({
+          ...item,
+          timestamp: new Date(item.timestamp)
+        }));
+        setHistory(formattedHistory);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки истории:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
   const getVerdictColor = (verdict: string) => {
     switch (verdict) {
@@ -324,7 +348,14 @@ const Index = () => {
               </p>
             </div>
 
-            {history.length === 0 ? (
+            {isLoadingHistory ? (
+              <Card className="max-w-4xl mx-auto">
+                <CardContent className="py-12 text-center">
+                  <Icon name="Loader2" className="mx-auto mb-4 text-primary animate-spin" size={48} />
+                  <p className="text-muted-foreground">Загрузка истории...</p>
+                </CardContent>
+              </Card>
+            ) : history.length === 0 ? (
               <Card className="max-w-4xl mx-auto">
                 <CardContent className="py-12 text-center">
                   <Icon name="Inbox" className="mx-auto mb-4 text-muted-foreground" size={48} />
