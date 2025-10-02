@@ -15,6 +15,10 @@ interface AnalysisResult {
   verdict: 'verified' | 'unverified' | 'warning';
   sources: string[];
   timestamp: Date;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  sentimentScore: number;
+  aiScore: number;
+  aiInsights: string[];
 }
 
 const Index = () => {
@@ -35,6 +39,14 @@ const Index = () => {
       if (confidence < 40) verdict = 'warning';
       else if (confidence < 70) verdict = 'unverified';
 
+      const sentimentScore = Math.floor(Math.random() * 200) - 100;
+      let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
+      
+      if (sentimentScore > 30) sentiment = 'positive';
+      else if (sentimentScore < -30) sentiment = 'negative';
+
+      const aiScore = Math.floor(Math.random() * 100);
+
       const result: AnalysisResult = {
         id: Date.now().toString(),
         text: text.slice(0, 100) + (text.length > 100 ? '...' : ''),
@@ -45,7 +57,15 @@ const Index = () => {
           'BBC News',
           'Associated Press'
         ],
-        timestamp: new Date()
+        timestamp: new Date(),
+        sentiment,
+        sentimentScore,
+        aiScore,
+        aiInsights: [
+          'Обнаружены эмоционально окрашенные слова',
+          'Структура текста соответствует журналистским стандартам',
+          'Выявлены фактические утверждения, требующие проверки'
+        ]
       };
 
       setCurrentResult(result);
@@ -78,6 +98,58 @@ const Index = () => {
       default:
         return 'Circle';
     }
+  };
+
+  const getSentimentColor = (sentiment: string) => {
+    switch (sentiment) {
+      case 'positive':
+        return 'bg-secondary text-white';
+      case 'negative':
+        return 'bg-destructive text-white';
+      case 'neutral':
+        return 'bg-muted text-muted-foreground';
+      default:
+        return 'bg-muted';
+    }
+  };
+
+  const getSentimentIcon = (sentiment: string) => {
+    switch (sentiment) {
+      case 'positive':
+        return 'ThumbsUp';
+      case 'negative':
+        return 'ThumbsDown';
+      case 'neutral':
+        return 'Minus';
+      default:
+        return 'Minus';
+    }
+  };
+
+  const exportResults = () => {
+    if (!currentResult) return;
+
+    const exportData = {
+      text: currentResult.text,
+      analysis: {
+        confidence: currentResult.confidence + '%',
+        verdict: currentResult.verdict,
+        sentiment: currentResult.sentiment,
+        sentimentScore: currentResult.sentimentScore,
+        aiScore: currentResult.aiScore + '%'
+      },
+      sources: currentResult.sources,
+      aiInsights: currentResult.aiInsights,
+      timestamp: currentResult.timestamp.toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analysis-${currentResult.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -168,12 +240,55 @@ const Index = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Уровень достоверности</span>
-                      <span className="text-2xl font-bold text-primary">{currentResult.confidence}%</span>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Уровень достоверности</span>
+                        <span className="text-2xl font-bold text-primary">{currentResult.confidence}%</span>
+                      </div>
+                      <Progress value={currentResult.confidence} className="h-3" />
                     </div>
-                    <Progress value={currentResult.confidence} className="h-3" />
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">AI-оценка</span>
+                        <span className="text-2xl font-bold text-primary">{currentResult.aiScore}%</span>
+                      </div>
+                      <Progress value={currentResult.aiScore} className="h-3" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <Icon name="Heart" size={18} />
+                      Тональность
+                    </h4>
+                    <div className="flex items-center gap-4">
+                      <Badge className={getSentimentColor(currentResult.sentiment)}>
+                        <Icon name={getSentimentIcon(currentResult.sentiment)} className="mr-1" size={16} />
+                        {currentResult.sentiment === 'positive' && 'Позитивная'}
+                        {currentResult.sentiment === 'negative' && 'Негативная'}
+                        {currentResult.sentiment === 'neutral' && 'Нейтральная'}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        Балл: {currentResult.sentimentScore > 0 ? '+' : ''}{currentResult.sentimentScore}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <Icon name="Sparkles" size={18} />
+                      AI-инсайты
+                    </h4>
+                    <div className="space-y-2">
+                      {currentResult.aiInsights.map((insight, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <Icon name="CheckCircle" className="text-primary mt-0.5" size={16} />
+                          <span>{insight}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -195,6 +310,11 @@ const Index = () => {
                       {currentResult.text}
                     </p>
                   </div>
+
+                  <Button onClick={exportResults} variant="outline" className="w-full">
+                    <Icon name="Download" className="mr-2" />
+                    Экспортировать результаты
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -237,8 +357,17 @@ const Index = () => {
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-3">
                       <p className="text-sm text-muted-foreground">{result.text}</p>
+                      <div className="flex items-center gap-3 text-xs">
+                        <Badge className={getSentimentColor(result.sentiment)} variant="secondary">
+                          <Icon name={getSentimentIcon(result.sentiment)} className="mr-1" size={12} />
+                          {result.sentiment === 'positive' && 'Позитив'}
+                          {result.sentiment === 'negative' && 'Негатив'}
+                          {result.sentiment === 'neutral' && 'Нейтрал'}
+                        </Badge>
+                        <span className="text-muted-foreground">AI: {result.aiScore}%</span>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
