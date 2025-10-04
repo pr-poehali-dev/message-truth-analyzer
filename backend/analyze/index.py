@@ -2,8 +2,6 @@ import json
 import os
 from typing import Dict, Any
 from openai import OpenAI
-import psycopg2
-from psycopg2.extras import execute_values
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
@@ -105,39 +103,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     ai_response = ai_response.strip()
     
     result = json.loads(ai_response)
-    
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url:
-        try:
-            conn = psycopg2.connect(db_url)
-            cur = conn.cursor()
-            
-            insert_query = """
-                INSERT INTO t_p2227539_message_truth_analyz.analyses 
-                (text_content, confidence, verdict, sentiment, sentiment_score, ai_score, ai_insights, sources)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING id
-            """
-            
-            cur.execute(insert_query, (
-                text,
-                result.get('confidence', 0),
-                result.get('verdict', 'unverified'),
-                result.get('sentiment', 'neutral'),
-                result.get('sentimentScore', 0),
-                result.get('aiScore', 0),
-                result.get('aiInsights', []),
-                result.get('sources', [])
-            ))
-            
-            analysis_id = cur.fetchone()[0]
-            result['id'] = analysis_id
-            
-            conn.commit()
-            cur.close()
-            conn.close()
-        except Exception as e:
-            print(f"Database error: {e}")
     
     return {
         'statusCode': 200,
