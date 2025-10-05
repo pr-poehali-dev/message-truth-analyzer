@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,11 +21,37 @@ interface AnalysisResult {
   aiInsights: string[];
 }
 
+const STORAGE_KEY = 'text-analyzer-history';
+
 const Index = () => {
   const [text, setText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentResult, setCurrentResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<AnalysisResult[]>([]);
+
+  useEffect(() => {
+    const savedHistory = localStorage.getItem(STORAGE_KEY);
+    if (savedHistory) {
+      try {
+        const parsed = JSON.parse(savedHistory);
+        const historyWithDates = parsed.map((item: any) => ({
+          ...item,
+          timestamp: new Date(item.timestamp)
+        }));
+        setHistory(historyWithDates);
+      } catch (error) {
+        console.error('Ошибка загрузки истории:', error);
+      }
+    }
+  }, []);
+
+  const saveHistory = (newHistory: AnalysisResult[]) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newHistory));
+    } catch (error) {
+      console.error('Ошибка сохранения истории:', error);
+    }
+  };
 
   const analyzeText = () => {
     if (!text.trim()) return;
@@ -111,7 +137,9 @@ const Index = () => {
       };
 
       setCurrentResult(result);
-      setHistory([result, ...history]);
+      const newHistory = [result, ...history];
+      setHistory(newHistory);
+      saveHistory(newHistory);
       setText('');
       setIsAnalyzing(false);
     }, 1500);
@@ -364,10 +392,29 @@ const Index = () => {
 
           <TabsContent value="history" className="space-y-6 animate-fade-in">
             <div className="text-center space-y-2 max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold">История анализов</h2>
-              <p className="text-muted-foreground">
-                Все проверенные тексты сохраняются в памяти браузера
-              </p>
+              <div className="flex items-center justify-center gap-4">
+                <div>
+                  <h2 className="text-3xl font-bold">История анализов</h2>
+                  <p className="text-muted-foreground">
+                    Все проверенные тексты сохраняются в памяти браузера
+                  </p>
+                </div>
+                {history.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm('Удалить всю историю анализов?')) {
+                        setHistory([]);
+                        saveHistory([]);
+                      }
+                    }}
+                  >
+                    <Icon name="Trash2" className="mr-2" size={16} />
+                    Очистить
+                  </Button>
+                )}
+              </div>
             </div>
 
             {history.length === 0 ? (
