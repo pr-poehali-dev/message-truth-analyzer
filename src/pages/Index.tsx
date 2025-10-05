@@ -22,6 +22,7 @@ interface AnalysisResult {
 }
 
 const STORAGE_KEY = 'text-analyzer-history';
+const MAX_HISTORY_ITEMS = 50;
 
 const Index = () => {
   const [text, setText] = useState('');
@@ -137,7 +138,7 @@ const Index = () => {
       };
 
       setCurrentResult(result);
-      const newHistory = [result, ...history];
+      const newHistory = [result, ...history].slice(0, MAX_HISTORY_ITEMS);
       setHistory(newHistory);
       saveHistory(newHistory);
       setText('');
@@ -396,7 +397,7 @@ const Index = () => {
                 <div>
                   <h2 className="text-3xl font-bold">История анализов</h2>
                   <p className="text-muted-foreground">
-                    Все проверенные тексты сохраняются в памяти браузера
+                    Сохранено {history.length} из {MAX_HISTORY_ITEMS} записей
                   </p>
                 </div>
                 {history.length > 0 && (
